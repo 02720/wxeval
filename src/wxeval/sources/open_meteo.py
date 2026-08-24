@@ -71,11 +71,11 @@ def parse_forecast_payload(payload: dict[str, Any], model: str) -> Forecast:
     frame = pd.DataFrame(
         {
             TEMPERATURE_COL: pd.to_numeric(
-                pd.Series(hourly.get(TEMPERATURE_COL, [])), errors="coerce"
-            ),
+                pd.Series(hourly.get(TEMPERATURE_COL)), errors="coerce"
+            ).to_numpy(dtype=float),
             PRECIPITATION_COL: pd.to_numeric(
-                pd.Series(hourly.get(PRECIPITATION_COL, [])), errors="coerce"
-            ),
+                pd.Series(hourly.get(PRECIPITATION_COL)), errors="coerce"
+            ).to_numpy(dtype=float),
         },
         index=pd.DatetimeIndex(times, name=TIME_COL),
     )

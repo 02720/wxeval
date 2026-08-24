@@ -54,6 +54,9 @@ def test_parse_payload_builds_utc_frame_with_attrs():
     assert fc.frame.index.name == "time"
     assert list(fc.frame.columns) == ["temperature_2m", "precipitation"]
     assert len(fc.frame) == 48
+    assert abs(fc.frame["temperature_2m"].iloc[0] - 20.0) < 1e-9
+    assert abs(fc.frame["temperature_2m"].iloc[10] - 21.0) < 1e-9
+    assert abs(fc.frame["precipitation"].iloc[10] - 0.0) < 1e-9
     assert pd.isna(fc.frame["temperature_2m"].iloc[5])
     assert pd.isna(fc.frame["precipitation"].iloc[5])
     assert fc.issue_utc == pd.Timestamp("2026-08-24T00:00", tz="UTC")

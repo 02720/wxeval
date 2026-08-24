@@ -123,7 +123,7 @@ def test_main_run_with_fake_config(tmp_path, monkeypatch):
     monkeypatch.setattr("wxeval.cli.make_sources", lambda s: {"ecmwf_ifs": FakeSource("ecmwf_ifs")})
     monkeypatch.setattr("wxeval.cli.ObsClient", FakeObs)
 
-    rc = main(["--config", str(config), "--data-root", str(data_root), "run"])
+    rc = main(["run", "--config", str(config), "--data-root", str(data_root)])
     assert rc == 0
     assert (tmp_path / "reports" / "latest.md").exists()
 
@@ -134,6 +134,6 @@ def test_main_backfill_reserved(tmp_path, capsys):
         "locations:\n  - name: a\n    latitude: 0\n    longitude: 0\n    timezone: UTC\n",
         encoding="utf-8",
     )
-    rc = main(["--config", str(config), "--data-root", str(tmp_path / "d"), "backfill"])
+    rc = main(["backfill", "--config", str(config), "--data-root", str(tmp_path / "d")])
     assert rc == 2
     assert "reserved" in capsys.readouterr().err

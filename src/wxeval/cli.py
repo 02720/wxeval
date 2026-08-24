@@ -175,14 +175,19 @@ def main(argv: list[str] | None = None) -> int:
         prog="wxeval",
         description=f"Weather forecast accuracy evaluation v{wxeval.__version__}",
     )
-    parser.add_argument("--config", type=Path, default=_default_config())
-    parser.add_argument("--data-root", type=Path, default=None)
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("run", help="capture + score + prune + report")
-    sub.add_parser("capture", help="fetch latest forecasts only")
-    sub.add_parser("score", help="score stored forecasts against observations only")
-    sub.add_parser("report", help="rebuild markdown report only")
-    backfill = sub.add_parser("backfill", help="reserved for future historical backtesting")
+
+    def add_command(name: str, help_text: str) -> argparse.ArgumentParser:
+        cmd = sub.add_parser(name, help=help_text)
+        cmd.add_argument("--config", type=Path, default=_default_config())
+        cmd.add_argument("--data-root", type=Path, default=None)
+        return cmd
+
+    add_command("run", "capture + score + prune + report")
+    add_command("capture", "fetch latest forecasts only")
+    add_command("score", "score stored forecasts against observations only")
+    add_command("report", "rebuild markdown report only")
+    backfill = add_command("backfill", "reserved for future historical backtesting")
     backfill.add_argument("--start", required=False)
     args = parser.parse_args(argv)
 
