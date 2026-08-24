@@ -18,7 +18,6 @@ from wxeval.sources.base import ForecastSource, SourceError
 from wxeval.sources.open_meteo import OpenMeteoForecastSource
 from wxeval.store import list_captures, load_state, prune, save_capture, save_state
 
-OBS_LOOKBACK_DAYS = 12
 OBS_LAG_DAYS = 2
 
 
@@ -81,11 +80,14 @@ def do_score(
     now: pd.Timestamp | None = None,
 ) -> StepResult:
     now = now or pd.Timestamp.now(tz="UTC")
-    start = (now - pd.Timedelta(days=OBS_LOOKBACK_DAYS)).strftime("%Y-%m-%d")
+    obs_lookback_days = settings.retention_days + settings.forecast_days + 5
+    start = (now - pd.Timedelta(days=obs_lookback_days)).strftime("%Y-%m-%d")
     end = (now - pd.Timedelta(days=OBS_LAG_DAYS)).strftime("%Y-%m-%d")
 
     def obs_loader(loc: Location) -> pd.DataFrame:
-        return obs_client.fetch_update(loc.name, loc.latitude, loc.longitude, start, end)
+        return obs_client.fetch_update(
+            loc.name, loc.latitude, loc.longitude, start, end
+        )
 
     by_name = {loc.name: loc for loc in settings.locations}
     summary = run_scoring(
@@ -158,9 +160,11 @@ def run_pipeline(
     obs_client = obs_client_factory(root)
     score_result = do_score(settings, root, obs_client, now=now)
 
-    state = load_state(root)
-    removed = prune(root, state, now=now, retention_days=settings.retention_days)
-    save_state(root, state)
+    removed = 0
+    if score_result.ok:
+        state = load_state(root)
+        removed = prune(root, state, now=now, retention_days=settings.retention_days)
+        save_state(root, state)
 
     report_result = do_report(settings, root)
     if removed:

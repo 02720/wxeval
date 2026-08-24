@@ -13,10 +13,12 @@ from wxeval.evaluate import (
     score_capture,
 )
 from wxeval.store import (
+    DONE_SENTINEL,
     capture_key,
     list_captures,
     load_state,
     save_capture,
+    save_state,
 )
 
 ISSUE = pd.Timestamp("2026-08-01T00:00", tz="UTC")
@@ -70,7 +72,9 @@ class TestScoreCapture:
     def test_perfect_forecast_all_buckets(self, tmp_path):
         cap = store(tmp_path, periods=384)
         obs = make_series(ISSUE, 384)
-        ok, err = score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE)
+        ok, err = score_capture(
+            cap, obs, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE, state={}
+        )
         assert ok and err is None
         hourly = read_csv(tmp_path, HOURLY_CSV)
         assert set(hourly["bucket"]) == {"0-24h", "24-72h", "72-168h", "168-384h"}
@@ -86,7 +90,7 @@ class TestScoreCapture:
     def test_daily_rows_use_local_midnight_lead(self, tmp_path):
         cap = store(tmp_path, periods=384)
         obs = make_series(ISSUE, 384)
-        score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE)
+        score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE, state={})
         daily = read_csv(tmp_path, DAILY_CSV)
         assert len(daily) > 0
         day_two_start_utc = (
@@ -102,7 +106,7 @@ class TestScoreCapture:
     def test_negative_lead_local_day_excluded(self, tmp_path):
         cap = store(tmp_path, periods=384)
         obs = make_series(ISSUE, 384)
-        score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=2, now=ISSUE)
+        score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=2, now=ISSUE, state={})
         daily = read_csv(tmp_path, DAILY_CSV)
         first_local_day_start = (
             pd.Timestamp("2026-08-01T00:00").tz_localize(LOC.timezone).tz_convert("UTC")
@@ -115,7 +119,7 @@ class TestScoreCapture:
         cap = store(tmp_path, periods=200)
         obs = make_series(ISSUE, 100)
         for _ in range(2):
-            score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE)
+            score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE, state={})
         hourly = read_csv(tmp_path, HOURLY_CSV)
         assert len(
             hourly.drop_duplicates(subset=["issue_utc", "model", "location", "bucket"])
@@ -125,12 +129,14 @@ class TestScoreCapture:
     def test_incremental_obs_extends_not_duplicates(self, tmp_path):
         cap = store(tmp_path, periods=300)
         obs_short = make_series(ISSUE, 60)
-        score_capture(cap, obs_short, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE)
+        score_capture(
+            cap, obs_short, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE, state={}
+        )
         h1 = read_csv(tmp_path, HOURLY_CSV)
         assert len(h1) == 2
         assert h1.set_index("bucket").loc["24-72h", "n_pairs"] == 36
         obs_long = make_series(ISSUE, 120)
-        score_capture(cap, obs_long, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE)
+        score_capture(cap, obs_long, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE, state={})
         h2 = read_csv(tmp_path, HOURLY_CSV)
         assert len(h2) == 3
         assert h2.set_index("bucket").loc["24-72h", "n_pairs"] == 48
@@ -139,22 +145,33 @@ class TestScoreCapture:
     def test_min_pairs_skips_small_buckets(self, tmp_path):
         cap = store(tmp_path, periods=100)
         obs = make_series(ISSUE, 30)
-        score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE)
+        score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE, state={})
         hourly = read_csv(tmp_path, HOURLY_CSV)
         assert set(hourly["bucket"]) == {"0-24h"}
 
     def test_state_tracks_scored_through(self, tmp_path):
         cap = store(tmp_path, periods=100)
         obs = make_series(ISSUE, 50)
-        score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=2, now=ISSUE)
-        state = load_state(tmp_path)
+        state = {}
+        score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=2, now=ISSUE, state=state)
         key = capture_key(ISSUE, "ecmwf_ifs", LOC.name)
         assert state[key] == "2026-08-03T01:00:00Z"
+        save_state(tmp_path, state)
+        assert load_state(tmp_path)[key] == "2026-08-03T01:00:00Z"
+
+    def test_complete_capture_marked_done(self, tmp_path):
+        cap = store(tmp_path, periods=384)
+        obs = make_series(ISSUE, 384)
+        state = {}
+        score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=2, now=ISSUE, state=state)
+        assert state[capture_key(ISSUE, "ecmwf_ifs", LOC.name)] == DONE_SENTINEL
 
     def test_empty_obs_is_noop(self, tmp_path):
         cap = store(tmp_path)
         empty = make_series(ISSUE, 0)
-        ok, err = score_capture(cap, empty, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE)
+        ok, err = score_capture(
+            cap, empty, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE, state={}
+        )
         assert not ok and err is None
 
 
@@ -164,7 +181,12 @@ class TestRunScoring:
         save_capture(tmp_path, make_series(cap_old, 384), cap_old, "ecmwf_ifs", LOC.name)
         old_cap = list_captures(tmp_path)[0]
         full_obs = make_series(cap_old, 500)
-        score_capture(old_cap, full_obs, root=tmp_path, location=LOC, min_pairs=2, now=cap_old)
+        state = {}
+        score_capture(
+            old_cap, full_obs, root=tmp_path, location=LOC, min_pairs=2, now=cap_old, state=state
+        )
+        assert state[capture_key(cap_old, "ecmwf_ifs", LOC.name)] == DONE_SENTINEL
+        save_state(tmp_path, state)
 
         save_capture(tmp_path, make_series(ISSUE, 384), ISSUE, "ecmwf_ifs", LOC.name)
         ghost_loc = Location(name="幽灵", latitude=1, longitude=1, timezone="UTC")

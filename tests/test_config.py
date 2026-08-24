@@ -75,3 +75,32 @@ def test_empty_locations_raise(tmp_path):
     cfg.write_text("locations: []\n", encoding="utf-8")
     with pytest.raises(ValueError):
         load_settings(cfg)
+
+
+def test_invalid_timezone_rejected():
+    with pytest.raises(ValueError, match="timezone"):
+        parse_location({"name": "x", "latitude": 0, "longitude": 0, "timezone": "Mars/Olympus"})
+
+
+def test_forecast_days_validation(tmp_path):
+    cfg = tmp_path / "c.yaml"
+    base = (
+        "locations:\n  - name: a\n    latitude: 0\n    longitude: 0\n    timezone: UTC\n"
+    )
+    cfg.write_text(base + "forecast_days: 0\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="forecast_days"):
+        load_settings(cfg)
+    cfg.write_text(base + "forecast_days: 20\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="forecast_days"):
+        load_settings(cfg)
+
+
+def test_retention_must_exceed_horizon_plus_lag(tmp_path):
+    cfg = tmp_path / "r.yaml"
+    base = (
+        "locations:\n  - name: a\n    latitude: 0\n    longitude: 0\n    timezone: UTC\n"
+        "forecast_days: 16\n"
+    )
+    cfg.write_text(base + "retention_days: 18\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="retention_days"):
+        load_settings(cfg)

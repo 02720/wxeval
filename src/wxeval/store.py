@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,8 +9,12 @@ import pandas as pd
 
 from wxeval.sources.base import PRECIPITATION_COL, TEMPERATURE_COL, TIME_COL
 
+logger = logging.getLogger(__name__)
+
 STATE_FILENAME = "state.json"
 CAPTURES_SUBDIR = "forecasts"
+DONE_SENTINEL = "done"
+PRUNE_GRACE_DAYS = 7
 
 
 @dataclass(frozen=True)
@@ -95,8 +100,12 @@ def load_state(root: Path) -> dict[str, str]:
     path = state_path(Path(root))
     if not path.exists():
         return {}
-    with open(path, encoding="utf-8") as f:
-        raw = json.load(f)
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = json.load(f)
+    except json.JSONDecodeError:
+        logger.warning("state.json corrupted, starting fresh")
+        return {}
     return {str(k): str(v) for k, v in raw.items()}
 
 
@@ -113,11 +122,17 @@ def save_state(root: Path, state: dict[str, str]) -> None:
 def prune(root: Path, state: dict[str, str], *, now: pd.Timestamp, retention_days: int) -> int:
     root = Path(root)
     cutoff = now - pd.Timedelta(days=retention_days)
+    hard_cutoff = now - pd.Timedelta(days=retention_days + PRUNE_GRACE_DAYS)
     removed = 0
     for capture in list_captures(root):
-        if capture.issue_utc >= cutoff:
+        key = capture_key(capture.issue_utc, capture.model, capture.location)
+        done = state.get(key) == DONE_SENTINEL
+        past_retention = capture.issue_utc <= cutoff
+        past_hard = capture.issue_utc <= hard_cutoff
+        if not (past_hard or (done and past_retention)):
             continue
         capture.path.unlink(missing_ok=True)
+        state.pop(key, None)
         removed += 1
     base = captures_root(root)
     if base.exists():
@@ -127,21 +142,7 @@ def prune(root: Path, state: dict[str, str], *, now: pd.Timestamp, retention_day
         for model_dir in base.glob("*/*"):
             if model_dir.is_dir() and not any(model_dir.iterdir()):
                 model_dir.rmdir()
-    kept_state = {k: v for k, v in state.items() if _state_issue_within_retention(k, cutoff)}
-    state.clear()
-    state.update(kept_state)
     return removed
-
-
-def _state_issue_within_retention(key: str, cutoff: pd.Timestamp) -> bool:
-    issue_str = key.split("|", 1)[0]
-    try:
-        issue = pd.Timestamp(issue_str)
-    except ValueError:
-        return True
-    if issue.tz is None:
-        issue = issue.tz_localize("UTC")
-    return issue >= cutoff
 
 
 __all__ = [

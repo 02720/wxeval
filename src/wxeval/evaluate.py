@@ -21,6 +21,7 @@ from wxeval.sources.base import (
     ForecastSource,
 )
 from wxeval.store import (
+    DONE_SENTINEL,
     Capture,
     capture_key,
     list_captures,
@@ -116,12 +117,14 @@ def score_capture(
     location: Location,
     min_pairs: int,
     now: pd.Timestamp,
+    state: dict[str, str],
 ) -> tuple[bool, str | None]:
     if obs.empty:
         return False, None
 
-    state = load_state(root)
     key = capture_key(capture.issue_utc, capture.model, capture.location)
+    if state.get(key) == DONE_SENTINEL:
+        return False, None
     scored_through_raw = state.get(key)
     max_obs = cast(pd.Timestamp, pd.DatetimeIndex(obs.index).max())
     if scored_through_raw is not None:
@@ -134,9 +137,14 @@ def score_capture(
     except Exception as exc:
         return False, f"failed loading capture {capture.path.name}: {exc}"
 
-    scorable_mask = np.asarray(
-        pd.DatetimeIndex(fcst.index).tz_convert("UTC") <= max_obs, dtype=bool
-    )
+    fcst_index_utc = pd.DatetimeIndex(fcst.index).tz_convert("UTC")
+    scorable_mask = np.asarray(fcst_index_utc <= max_obs, dtype=bool)
+    scorable = fcst_index_utc[scorable_mask]
+    if len(scorable) == 0:
+        return False, None
+    new_through = cast(pd.Timestamp, scorable.max())
+    last_fcst = cast(pd.Timestamp, fcst_index_utc.max())
+    complete = new_through >= last_fcst - pd.Timedelta(hours=1)
     fcst = fcst.loc[scorable_mask]
     if fcst.empty:
         return False, None
@@ -193,11 +201,9 @@ def score_capture(
     _write_results(root, HOURLY_CSV, hourly_rows)
     _write_results(root, DAILY_CSV, daily_rows)
 
-    new_through = cast(pd.Timestamp, pd.DatetimeIndex(times).max()) if len(times) else None
-    updated_state = load_state(root)
-    if new_through is not None:
-        updated_state[key] = new_through.tz_convert("UTC").strftime("%Y-%m-%dT%H:%M:%SZ")
-        save_state(root, updated_state)
+    state[key] = (
+        DONE_SENTINEL if complete else new_through.strftime("%Y-%m-%dT%H:%M:%SZ")
+    )
 
     return bool(hourly_rows or daily_rows), None
 
@@ -240,12 +246,7 @@ def run_scoring(
             )
             continue
         key = capture_key(capture.issue_utc, capture.model, capture.location)
-        horizon_end = capture.issue_utc + pd.Timedelta(hours=MAX_LEAD_HOURS)
-        scored_through = state.get(key)
-        fully_scored = scored_through is not None and pd.Timestamp(
-            scored_through
-        ) >= horizon_end - pd.Timedelta(hours=1)
-        if fully_scored:
+        if state.get(key) == DONE_SENTINEL:
             summary.skipped_no_new_obs += 1
             continue
         if capture.location not in obs_cache:
@@ -263,6 +264,7 @@ def run_scoring(
                 location=loc,
                 min_pairs=min_pairs,
                 now=now,
+                state=state,
             )
         except Exception as exc:
             summary.errors.append(f"scoring failed for {capture.path.name}: {exc}")
@@ -272,6 +274,7 @@ def run_scoring(
         if updated:
             summary.updated += 1
 
+    save_state(root, state)
     return summary
 
 
