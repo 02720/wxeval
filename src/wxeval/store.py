@@ -143,9 +143,11 @@ def prune(root: Path, state: dict[str, str], *, now: pd.Timestamp, retention_day
 def _state_issue_within_retention(key: str, cutoff: pd.Timestamp) -> bool:
     issue_str = key.split("|", 1)[0]
     try:
-        issue = pd.Timestamp(issue_str).tz_localize("UTC")
+        issue = pd.Timestamp(issue_str)
     except ValueError:
         return True
+    if issue.tz is None:
+        issue = issue.tz_localize("UTC")
     return issue >= cutoff
 
 

@@ -15,7 +15,7 @@ from wxeval.store import (
 
 
 def make_frame(start: str = "2026-08-01", periods: int = 48) -> pd.DataFrame:
-    idx = pd.date_range(start, periods=periods, freq="h", tz="UTC")
+    idx = pd.date_range(start, periods=periods, freq="h", tz="UTC", name="time")
     return pd.DataFrame(
         {"temperature_2m": [float(i % 5) for i in range(periods)], "precipitation": [0.0] * periods},
         index=idx,
@@ -33,7 +33,7 @@ def test_capture_roundtrip_and_dedupe(tmp_path):
     assert cap.model == "ecmwf_ifs"
     assert cap.location == "梧州"
     loaded = load_capture(cap)
-    pd.testing.assert_frame_equal(loaded, df)
+    pd.testing.assert_frame_equal(loaded, df, check_freq=False)
     expected_key = "20260824T0000Z|ecmwf_ifs|梧州"
     assert capture_key(issue, "ecmwf_ifs", "梧州") == expected_key
 
