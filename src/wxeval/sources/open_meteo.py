@@ -7,12 +7,11 @@ import pandas as pd
 import requests
 
 from wxeval.sources.base import (
-    Forecast,
-    ForecastSource,
     PRECIPITATION_COL,
-    SourceError,
     TEMPERATURE_COL,
     TIME_COL,
+    Forecast,
+    SourceError,
     get_with_retry,
 )
 

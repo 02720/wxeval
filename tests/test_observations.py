@@ -11,7 +11,9 @@ from wxeval.sources.base import SourceError
 
 
 def archive_payload(start: str, hours: int) -> dict[str, Any]:
-    times = pd.date_range(start, periods=hours, freq="h", tz="UTC").strftime("%Y-%m-%dT%H:%M").tolist()
+    times = (
+        pd.date_range(start, periods=hours, freq="h", tz="UTC").strftime("%Y-%m-%dT%H:%M").tolist()
+    )
     return {
         "hourly": {
             "time": times,

@@ -3,9 +3,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
 
 import pandas as pd
 
@@ -100,7 +100,9 @@ def do_score(
         f"considered={summary.considered} updated={summary.updated} "
         f"skipped={summary.skipped_no_new_obs}"
     )
-    return StepResult(ok=not summary.errors or summary.updated > 0, detail=detail, errors=summary.errors)
+    return StepResult(
+        ok=not summary.errors or summary.updated > 0, detail=detail, errors=summary.errors
+    )
 
 
 def do_report(settings: Settings, root: Path) -> StepResult:
@@ -120,9 +122,21 @@ def write_errors_file(root: Path, result: RunResult) -> None:
     errors_file.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "generated_at": pd.Timestamp.now(tz="UTC").isoformat(),
-        "capture": {"ok": result.capture.ok, "detail": result.capture.detail, "errors": result.capture.errors},
-        "score": {"ok": result.score.ok, "detail": result.score.detail, "errors": result.score.errors},
-        "report": {"ok": result.report.ok, "detail": result.report.detail, "errors": result.report.errors},
+        "capture": {
+            "ok": result.capture.ok,
+            "detail": result.capture.detail,
+            "errors": result.capture.errors,
+        },
+        "score": {
+            "ok": result.score.ok,
+            "detail": result.score.detail,
+            "errors": result.score.errors,
+        },
+        "report": {
+            "ok": result.report.ok,
+            "detail": result.report.detail,
+            "errors": result.report.errors,
+        },
     }
     tmp = errors_file.with_suffix(".tmp")
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")

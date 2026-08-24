@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
 from wxeval.store import (
     capture_key,
@@ -17,7 +16,10 @@ from wxeval.store import (
 def make_frame(start: str = "2026-08-01", periods: int = 48) -> pd.DataFrame:
     idx = pd.date_range(start, periods=periods, freq="h", tz="UTC", name="time")
     return pd.DataFrame(
-        {"temperature_2m": [float(i % 5) for i in range(periods)], "precipitation": [0.0] * periods},
+        {
+            "temperature_2m": [float(i % 5) for i in range(periods)],
+            "precipitation": [0.0] * periods,
+        },
         index=idx,
     )
 

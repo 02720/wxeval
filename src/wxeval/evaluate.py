@@ -59,9 +59,7 @@ def bucket_label(lead_hours: float) -> str | None:
 
 
 def _lead_hours(valid: pd.DatetimeIndex, issue: pd.Timestamp) -> np.ndarray:
-    return np.asarray(
-        (valid.tz_convert("UTC") - issue) / pd.Timedelta(hours=1), dtype=float
-    )
+    return np.asarray((valid.tz_convert("UTC") - issue) / pd.Timedelta(hours=1), dtype=float)
 
 
 def _aligned_pairs(
@@ -174,7 +172,9 @@ def score_capture(
     min_daily_pairs = max(2, min_pairs // 8)
     pooled_by_bucket: dict[str, list[int]] = {}
     for d, indices in by_day.items():
-        lead = (_day_start_utc(str(d), location.timezone) - capture.issue_utc).total_seconds() / 3600.0
+        lead = (
+            _day_start_utc(str(d), location.timezone) - capture.issue_utc
+        ).total_seconds() / 3600.0
         label = bucket_label(lead)
         if label is None:
             continue
@@ -193,9 +193,7 @@ def score_capture(
     _write_results(root, HOURLY_CSV, hourly_rows)
     _write_results(root, DAILY_CSV, daily_rows)
 
-    new_through = (
-        cast(pd.Timestamp, pd.DatetimeIndex(times).max()) if len(times) else None
-    )
+    new_through = cast(pd.Timestamp, pd.DatetimeIndex(times).max()) if len(times) else None
     updated_state = load_state(root)
     if new_through is not None:
         updated_state[key] = new_through.tz_convert("UTC").strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -237,15 +235,16 @@ def run_scoring(
     for capture in captures:
         loc = locations_by_name.get(capture.location)
         if loc is None:
-            summary.errors.append(f"unknown location {capture.location!r}, skipping {capture.path.name}")
+            summary.errors.append(
+                f"unknown location {capture.location!r}, skipping {capture.path.name}"
+            )
             continue
         key = capture_key(capture.issue_utc, capture.model, capture.location)
         horizon_end = capture.issue_utc + pd.Timedelta(hours=MAX_LEAD_HOURS)
         scored_through = state.get(key)
-        fully_scored = (
-            scored_through is not None
-            and pd.Timestamp(scored_through) >= horizon_end - pd.Timedelta(hours=1)
-        )
+        fully_scored = scored_through is not None and pd.Timestamp(
+            scored_through
+        ) >= horizon_end - pd.Timedelta(hours=1)
         if fully_scored:
             summary.skipped_no_new_obs += 1
             continue

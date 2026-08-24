@@ -70,9 +70,7 @@ class TestScoreCapture:
     def test_perfect_forecast_all_buckets(self, tmp_path):
         cap = store(tmp_path, periods=384)
         obs = make_series(ISSUE, 384)
-        ok, err = score_capture(
-            cap, obs, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE
-        )
+        ok, err = score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE)
         assert ok and err is None
         hourly = read_csv(tmp_path, HOURLY_CSV)
         assert set(hourly["bucket"]) == {"0-24h", "24-72h", "72-168h", "168-384h"}
@@ -91,9 +89,9 @@ class TestScoreCapture:
         score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE)
         daily = read_csv(tmp_path, DAILY_CSV)
         assert len(daily) > 0
-        day_two_start_utc = pd.Timestamp("2026-08-02T00:00").tz_localize(
-            LOC.timezone
-        ).tz_convert("UTC")
+        day_two_start_utc = (
+            pd.Timestamp("2026-08-02T00:00").tz_localize(LOC.timezone).tz_convert("UTC")
+        )
         lead_day_two = (day_two_start_utc - ISSUE).total_seconds() / 3600
         expected = bucket_label(lead_day_two)
         assert expected == "0-24h"
@@ -106,9 +104,9 @@ class TestScoreCapture:
         obs = make_series(ISSUE, 384)
         score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=2, now=ISSUE)
         daily = read_csv(tmp_path, DAILY_CSV)
-        first_local_day_start = pd.Timestamp("2026-08-01T00:00").tz_localize(
-            LOC.timezone
-        ).tz_convert("UTC")
+        first_local_day_start = (
+            pd.Timestamp("2026-08-01T00:00").tz_localize(LOC.timezone).tz_convert("UTC")
+        )
         assert (first_local_day_start - ISSUE).total_seconds() < 0
         assert set(daily["bucket"]) == {"0-24h", "24-72h", "72-168h", "168-384h"}
         assert len(daily) == 4
@@ -119,7 +117,9 @@ class TestScoreCapture:
         for _ in range(2):
             score_capture(cap, obs, root=tmp_path, location=LOC, min_pairs=24, now=ISSUE)
         hourly = read_csv(tmp_path, HOURLY_CSV)
-        assert len(hourly.drop_duplicates(subset=["issue_utc", "model", "location", "bucket"])) == len(hourly)
+        assert len(
+            hourly.drop_duplicates(subset=["issue_utc", "model", "location", "bucket"])
+        ) == len(hourly)
         assert len(hourly) == 3
 
     def test_incremental_obs_extends_not_duplicates(self, tmp_path):
@@ -168,7 +168,13 @@ class TestRunScoring:
 
         save_capture(tmp_path, make_series(ISSUE, 384), ISSUE, "ecmwf_ifs", LOC.name)
         ghost_loc = Location(name="幽灵", latitude=1, longitude=1, timezone="UTC")
-        save_capture(tmp_path, make_series(ISSUE, 48), ISSUE - pd.Timedelta(days=30), "ncep_gfs_global", ghost_loc.name)
+        save_capture(
+            tmp_path,
+            make_series(ISSUE, 48),
+            ISSUE - pd.Timedelta(days=30),
+            "ncep_gfs_global",
+            ghost_loc.name,
+        )
 
         def obs_loader(loc):
             return make_series(ISSUE, 400) if loc.name == LOC.name else make_series(ISSUE, 10)

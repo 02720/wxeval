@@ -4,7 +4,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
 import yaml
 
 from wxeval.cli import main, run_pipeline
@@ -36,7 +35,9 @@ class FakeSource:
         from wxeval.sources.base import Forecast
 
         issue = _issue_anchor()
-        idx = pd.date_range(issue, periods=min(forecast_days * 24, 384), freq="h", tz="UTC", name="time")
+        idx = pd.date_range(
+            issue, periods=min(forecast_days * 24, 384), freq="h", tz="UTC", name="time"
+        )
         i = np.arange(len(idx))
         frame = pd.DataFrame(
             {
@@ -103,7 +104,12 @@ def test_main_run_with_fake_config(tmp_path, monkeypatch):
             {
                 "models": ["ecmwf_ifs"],
                 "locations": [
-                    {"name": "梧州", "latitude": 23.477, "longitude": 111.279, "timezone": "Asia/Shanghai"}
+                    {
+                        "name": "梧州",
+                        "latitude": 23.477,
+                        "longitude": 111.279,
+                        "timezone": "Asia/Shanghai",
+                    }
                 ],
                 "min_pairs": 24,
                 "retention_days": 21,
@@ -124,7 +130,10 @@ def test_main_run_with_fake_config(tmp_path, monkeypatch):
 
 def test_main_backfill_reserved(tmp_path, capsys):
     config = tmp_path / "cfg.yaml"
-    config.write_text("locations:\n  - name: a\n    latitude: 0\n    longitude: 0\n    timezone: UTC\n", encoding="utf-8")
+    config.write_text(
+        "locations:\n  - name: a\n    latitude: 0\n    longitude: 0\n    timezone: UTC\n",
+        encoding="utf-8",
+    )
     rc = main(["--config", str(config), "--data-root", str(tmp_path / "d"), "backfill"])
     assert rc == 2
     assert "reserved" in capsys.readouterr().err

@@ -33,12 +33,7 @@ def results_root(root: Path) -> Path:
 
 
 def _capture_path(root: Path, issue_utc: pd.Timestamp, model: str, location: str) -> Path:
-    return (
-        captures_root(root)
-        / issue_utc.strftime("%Y%m%dT%H")
-        / model
-        / f"{location}.csv.gz"
-    )
+    return captures_root(root) / issue_utc.strftime("%Y%m%dT%H") / model / f"{location}.csv.gz"
 
 
 def save_capture(
@@ -109,7 +104,9 @@ def save_state(root: Path, state: dict[str, str]) -> None:
     path = state_path(Path(root))
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(state, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
+    tmp.write_text(
+        json.dumps(state, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8"
+    )
     tmp.replace(path)
 
 
@@ -130,11 +127,7 @@ def prune(root: Path, state: dict[str, str], *, now: pd.Timestamp, retention_day
         for model_dir in base.glob("*/*"):
             if model_dir.is_dir() and not any(model_dir.iterdir()):
                 model_dir.rmdir()
-    kept_state = {
-        k: v
-        for k, v in state.items()
-        if _state_issue_within_retention(k, cutoff)
-    }
+    kept_state = {k: v for k, v in state.items() if _state_issue_within_retention(k, cutoff)}
     state.clear()
     state.update(kept_state)
     return removed

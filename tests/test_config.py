@@ -6,7 +6,7 @@ from wxeval.config import BUCKETS, load_settings, parse_location
 
 
 def test_buckets_are_left_closed_right_open_and_ordered():
-    for (lo, hi, label), (lo2, hi2, _) in zip(BUCKETS, BUCKETS[1:]):
+    for (lo, hi, label), (lo2, _hi2, _) in zip(BUCKETS, BUCKETS[1:], strict=False):
         assert hi == lo2
         assert lo < hi
         assert "/" not in label

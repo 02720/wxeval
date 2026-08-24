@@ -7,7 +7,6 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt  # noqa: E402
-
 import pandas as pd  # noqa: E402
 
 CJK_FONT_CANDIDATES = [
@@ -62,7 +61,11 @@ def _trend_chart(df: pd.DataFrame, out: Path, days: int = 30) -> None:
     sub["issue"] = pd.to_datetime(sub["issue_utc"], utc=True, format="mixed")
     cutoff = sub["issue"].max() - pd.Timedelta(days=days)
     sub = sub[sub["issue"] >= cutoff]
-    grouped = sub.groupby([sub["issue"].dt.date, "model"], observed=True)["temp_mae"].mean().unstack("model")
+    grouped = (
+        sub.groupby([sub["issue"].dt.date, "model"], observed=True)["temp_mae"]
+        .mean()
+        .unstack("model")
+    )
     fig, ax = plt.subplots(figsize=(9, 4.5), dpi=120)
     for model in grouped.columns:
         ax.plot(grouped.index, grouped[model], marker="o", markersize=3, label=model)
@@ -81,13 +84,23 @@ def make_charts(hourly: pd.DataFrame, daily: pd.DataFrame, charts_dir: Path) -> 
     written: list[Path] = []
 
     if not hourly.empty and "temp_mae" in hourly:
-        piv = hourly.dropna(subset=["temp_mae"]).groupby(["bucket", "model"], observed=True)["temp_mae"].mean().unstack("model")
+        piv = (
+            hourly.dropna(subset=["temp_mae"])
+            .groupby(["bucket", "model"], observed=True)["temp_mae"]
+            .mean()
+            .unstack("model")
+        )
         p = charts_dir / "temp_mae_by_bucket.png"
         _bar_chart(piv, "各模式温度MAE对比 (小时级, 跨城市均值)", "MAE (℃)", p)
         written.append(p)
 
     if not daily.empty and "precip_ts" in daily:
-        piv = daily.dropna(subset=["precip_ts"]).groupby(["bucket", "model"], observed=True)["precip_ts"].mean().unstack("model")
+        piv = (
+            daily.dropna(subset=["precip_ts"])
+            .groupby(["bucket", "model"], observed=True)["precip_ts"]
+            .mean()
+            .unstack("model")
+        )
         p = charts_dir / "precip_ts_by_bucket.png"
         _bar_chart(piv, "各模式降水TS评分对比 (日累计)", "TS", p)
         written.append(p)
@@ -122,8 +135,12 @@ def _markdown_table(df: pd.DataFrame, floatfmt: str = ".2f") -> str:
 def build_report(root: Path, report_path: Path | None = None) -> Path:
     root = Path(root)
     results = root / "results"
-    hourly = pd.read_csv(results / "hourly.csv") if (results / "hourly.csv").exists() else pd.DataFrame()
-    daily = pd.read_csv(results / "daily.csv") if (results / "daily.csv").exists() else pd.DataFrame()
+    hourly = (
+        pd.read_csv(results / "hourly.csv") if (results / "hourly.csv").exists() else pd.DataFrame()
+    )
+    daily = (
+        pd.read_csv(results / "daily.csv") if (results / "daily.csv").exists() else pd.DataFrame()
+    )
 
     charts_dir = root.parent / "reports" / "charts"
     chart_files = make_charts(hourly, daily, charts_dir)
@@ -138,19 +155,34 @@ def build_report(root: Path, report_path: Path | None = None) -> Path:
         parts.append("\n暂无评分数据。系统需要运行数天后积累足够的观测配对样本。\n")
 
     if not hourly.empty and "temp_mae" in hourly:
-        piv = hourly.dropna(subset=["temp_mae"]).groupby(["bucket", "model"], observed=True)["temp_mae"].mean().unstack("model")
+        piv = (
+            hourly.dropna(subset=["temp_mae"])
+            .groupby(["bucket", "model"], observed=True)["temp_mae"]
+            .mean()
+            .unstack("model")
+        )
         piv = piv.reindex(BUCKET_ORDER).dropna(how="all")
         parts.append("\n## 小时级温度MAE (跨城市均值, ℃)\n\n")
         parts.append(_markdown_table(piv))
 
     if not daily.empty and "precip_ts" in daily:
-        piv = daily.dropna(subset=["precip_ts"]).groupby(["bucket", "model"], observed=True)["precip_ts"].mean().unstack("model")
+        piv = (
+            daily.dropna(subset=["precip_ts"])
+            .groupby(["bucket", "model"], observed=True)["precip_ts"]
+            .mean()
+            .unstack("model")
+        )
         piv = piv.reindex(BUCKET_ORDER).dropna(how="all")
         parts.append("\n## 日累计降水TS评分 (跨城市均值)\n\n")
         parts.append(_markdown_table(piv))
 
     if not hourly.empty and "location" in hourly and "temp_acc2" in hourly:
-        piv = hourly.dropna(subset=["temp_acc2"]).groupby(["location", "model"], observed=True)["temp_acc2"].mean().unstack("model")
+        piv = (
+            hourly.dropna(subset=["temp_acc2"])
+            .groupby(["location", "model"], observed=True)["temp_acc2"]
+            .mean()
+            .unstack("model")
+        )
         parts.append("\n## 分城市 ±2℃准确率 (小时级, 全部lead平均, %)\n\n")
         parts.append(_markdown_table(piv, ".1f"))
 
