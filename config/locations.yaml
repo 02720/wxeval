@@ -1,0 +1,26 @@
+models:
+  - ecmwf_ifs
+  - ncep_gfs_global
+  - dwd_icon_global
+
+locations:
+  - name: 梧州
+    latitude: 23.477
+    longitude: 111.279
+    timezone: Asia/Shanghai
+  - name: 博白
+    latitude: 22.271
+    longitude: 109.978
+    timezone: Asia/Shanghai
+  - name: 平南
+    latitude: 23.546
+    longitude: 110.393
+    timezone: Asia/Shanghai
+  - name: 万宁
+    latitude: 18.795
+    longitude: 110.389
+    timezone: Asia/Shanghai
+
+min_pairs: 24
+retention_days: 21
+forecast_days: 16

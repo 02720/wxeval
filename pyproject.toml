@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wxeval"
+version = "0.1.0"
+description = "Weather forecast API accuracy evaluation against Open-Meteo historical observations using cyeva"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "cyeva==0.2.3",
+    "flexparser==0.3.1",
+    "matplotlib>=3.8",
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "pyyaml>=6.0",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+wxeval = "wxeval.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wxeval"]
+
+[tool.pytest.ini_options]
+markers = [
+    "network: tests that hit real network APIs (deselected by default)",
+]
+addopts = "-m 'not network'"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
