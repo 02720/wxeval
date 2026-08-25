@@ -1,8 +1,8 @@
 {
- "generated_at": "2026-08-25T04:47:51.118118+00:00",
+ "generated_at": "2026-08-25T07:13:45.349996+00:00",
  "capture": {
   "ok": true,
-  "detail": "stored=12 skipped=0 captures_total=12",
+  "detail": "stored=0 skipped=12 captures_total=12",
   "errors": []
  },
  "score": {
@@ -11,8 +11,10 @@
   "errors": []
  },
  "report": {
-  "ok": true,
-  "detail": "report=reports/latest.md",
-  "errors": []
+  "ok": false,
+  "detail": "report failed",
+  "errors": [
+   "report: slice(None, 20, None)"
+  ]
  }
 }
