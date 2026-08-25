@@ -1,0 +1,18 @@
+{
+ "generated_at": "2026-08-25T04:47:51.118118+00:00",
+ "capture": {
+  "ok": true,
+  "detail": "stored=12 skipped=0 captures_total=12",
+  "errors": []
+ },
+ "score": {
+  "ok": true,
+  "detail": "considered=12 updated=0 skipped=0",
+  "errors": []
+ },
+ "report": {
+  "ok": true,
+  "detail": "report=reports/latest.md",
+  "errors": []
+ }
+}
