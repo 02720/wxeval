@@ -1,8 +1,8 @@
 {
- "generated_at": "2026-08-26T02:03:02.022838+00:00",
+ "generated_at": "2026-08-26T07:13:29.071856+00:00",
  "capture": {
   "ok": true,
-  "detail": "stored=12 skipped=0 captures_total=24",
+  "detail": "stored=0 skipped=12 captures_total=24",
   "errors": []
  },
  "score": {
