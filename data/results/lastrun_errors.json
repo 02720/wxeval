@@ -1,13 +1,13 @@
 {
- "generated_at": "2026-08-26T20:12:47.309772+00:00",
+ "generated_at": "2026-08-27T09:59:31.313045+00:00",
  "capture": {
   "ok": true,
-  "detail": "stored=0 skipped=12 captures_total=24",
+  "detail": "stored=12 skipped=0 captures_total=36",
   "errors": []
  },
  "score": {
   "ok": true,
-  "detail": "considered=24 updated=0 skipped=0",
+  "detail": "considered=36 updated=12 skipped=0",
   "errors": []
  },
  "report": {
